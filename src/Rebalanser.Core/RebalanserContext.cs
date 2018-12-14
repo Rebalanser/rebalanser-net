@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Rebalanser
+namespace Rebalanser.Core
 {
     /// <summary>
     /// Creates a Rebalanser node that participates in a resource group
@@ -27,7 +26,7 @@ namespace Rebalanser
         /// <summary>
         /// Called once the node has been assigned new resources
         /// </summary>
-        public event EventHandler OnAssignment;
+        public event EventHandler<OnAssignmentArgs> OnAssignment;
 
         /// <summary>
         /// Called when a non recoverable error occurs
@@ -107,12 +106,12 @@ namespace Rebalanser
             OnError?.Invoke(this, e);
         }
 
-        private void StartActivity()
+        private void StartActivity(IList<string> resources)
         {
-            RaiseOnAssignments(EventArgs.Empty);
+            RaiseOnAssignments(new OnAssignmentArgs(resources));
         }
 
-        protected virtual void RaiseOnAssignments(EventArgs e)
+        protected virtual void RaiseOnAssignments(OnAssignmentArgs e)
         {
             OnAssignment?.Invoke(this, e);
         }

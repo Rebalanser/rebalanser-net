@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Rebalanser
+namespace Rebalanser.Core
 {
     public interface IRebalanserProvider
     {

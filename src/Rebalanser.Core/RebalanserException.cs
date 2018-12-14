@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Rebalanser
+namespace Rebalanser.Core
 {
     public class RebalanserException : Exception
     {

@@ -1,23 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
-namespace Rebalanser
+namespace Rebalanser.Core
 {
     public class OnChangeActions
     {
         public OnChangeActions()
         {
-            OnStartActions = new List<Action>();
+            OnStartActions = new List<Action<IList<string>>>();
             OnStopActions = new List<Action>();
             OnErrorActions = new List<Action<string, bool, Exception>>();
         }
 
-        public List<Action> OnStartActions { get; set; }
+        public List<Action<IList<string>>> OnStartActions { get; set; }
         public List<Action> OnStopActions { get; set; }
         public List<Action<string, bool, Exception>> OnErrorActions { get; set; }
 
-        public void AddOnStartAction(Action action)
+        public void AddOnStartAction(Action<IList<string>> action)
         {
             OnStartActions.Add(action);
         }

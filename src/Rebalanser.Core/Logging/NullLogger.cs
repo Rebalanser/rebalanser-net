@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Rebalanser.Logging
+namespace Rebalanser.Core.Logging
 {
     public class NullLogger : ILogger
     {
