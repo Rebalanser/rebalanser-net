@@ -8,8 +8,8 @@
     <Company>Jack Vanlightly</Company>
     <Copyright>Jack Vanlightly</Copyright>
     <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/Vanlightly/Rebalanser</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Vanlightly/Rebalanser</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Rebalanser/rebalanser-net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Rebalanser/rebalanser-net</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
     <Description>Distribute a group of resources over a group of coordinating nodes.</Description>
   </PropertyGroup>

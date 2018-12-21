@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 namespace Rebalanser.Core
 {
     /// <summary>
-    /// Creates a Rebalanser node that participates in a resource group
+    /// Creates a Rebalanser client node that participates in a resource group
     /// </summary>
-    public class RebalanserContext : IDisposable
+    public class RebalanserClient : IDisposable
     {
         private IRebalanserProvider rebalanserProvider;
         private CancellationTokenSource cts;
 
-        public RebalanserContext()
+        public RebalanserClient()
         {
             this.rebalanserProvider = Providers.GetProvider();
         }
@@ -21,7 +21,7 @@ namespace Rebalanser.Core
         /// <summary>
         /// Called when a rebalancing is triggered
         /// </summary>
-        public event EventHandler OnCancelAssignment;
+        public event EventHandler OnUnassignment;
 
         /// <summary>
         /// Called once the node has been assigned new resources
@@ -38,16 +38,16 @@ namespace Rebalanser.Core
         /// </summary>
         /// <param name="resourceGroup">The id of the resource group</param>
         /// <returns></returns>
-        public async Task StartAsync(string resourceGroup, ContextOptions contextOptions)
+        public async Task StartAsync(string resourceGroup, ClientOptions clientOptions)
         {
             this.cts = new CancellationTokenSource();
             var onChangeActions = new OnChangeActions();
             onChangeActions.AddOnStartAction(StartActivity);
             onChangeActions.AddOnStopAction(CancelActivity);
             onChangeActions.AddOnErrorAction(RaiseError);
-            await this.rebalanserProvider.StartAsync(resourceGroup, onChangeActions, this.cts.Token, contextOptions);
+            await this.rebalanserProvider.StartAsync(resourceGroup, onChangeActions, this.cts.Token, clientOptions);
         }
-
+        
         /// <summary>
         /// Returns the list of assigned resources. This is a blocking call that blocks until
         /// resources have been assigned. Note that if there are more nodes participating in 
@@ -70,10 +70,64 @@ namespace Rebalanser.Core
         {
             return this.rebalanserProvider.GetAssignedResources(token);
         }
+        
+        /// <summary>
+        /// Shutsdown the client context, including invoking the OnCancelAssignment event handlers
+        /// It will block until all handlers have finished executing
+        /// </summary>
+        /// <returns></returns>
+        public async Task StopAsync()
+        {
+            if (!disposed)
+            {
+                this.cts.Cancel(); // signals provider to stop
+                await this.rebalanserProvider.WaitForCompletionAsync();
+                disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Shutsdown the client context, including invoking the OnCancelAssignment event handlers
+        /// It will block until all handlers have finished executing or the timeout has been reached
+        /// </summary>
+        /// <returns></returns>
+        public async Task StopAsync(TimeSpan timeout)
+        {
+            if (!disposed)
+            {
+                this.cts.Cancel(); // signals provider to stop
+                var completionTask = this.rebalanserProvider.WaitForCompletionAsync();
+                if (await Task.WhenAny(completionTask, Task.Delay(timeout)) == completionTask)
+                    await completionTask;
+                
+                disposed = true;
+            }
+        }
+        
+        /// <summary>
+        /// Shutsdown the client context, including invoking the OnCancelAssignment event handlers
+        /// It will block until all handlers have finished executing, or the timeout has been reached or the cancellation token has been cancelled
+        /// </summary>
+        /// <returns></returns>
+        public async Task StopAsync(TimeSpan timeout, CancellationToken token)
+        {
+            if (!disposed)
+            {
+                this.cts.Cancel(); // signals provider to stop
+                var completionTask = this.rebalanserProvider.WaitForCompletionAsync();
+                if (await Task.WhenAny(completionTask, Task.Delay(timeout, token)) == completionTask)
+                    await completionTask;
+               
+                disposed = true;
+            }
+        }
+        
 
         private bool disposed;
         /// <summary>
-        /// Initiates a shutdown of the node.
+        /// If StopAsync has not previously been called it initiates a shutdown of the node,
+        /// but leaves only 5 seconds for shutdown, which includes invoking your OnCancelAssignment event handlers
+        /// For more control use the StopAsync method where you can specify a longer and safer shutdown timeout
         /// </summary>
         public void Dispose()
         {
@@ -93,7 +147,7 @@ namespace Rebalanser.Core
 
         protected virtual void RaiseOnCancelAssignment(EventArgs e)
         {
-            OnCancelAssignment?.Invoke(this, e);
+            OnUnassignment?.Invoke(this, e);
         }
 
         private void RaiseError(string message, bool autoRecoveryEnabled, Exception ex)
