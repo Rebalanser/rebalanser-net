@@ -8,7 +8,7 @@ namespace Rebalanser.Core
     {
         Task StartAsync(string group, OnChangeActions onChangeActions, CancellationToken token, ClientOptions clientOptions);
         Task WaitForCompletionAsync();
-        IList<string> GetAssignedResources();
-        IList<string> GetAssignedResources(CancellationToken token);
+        AssignedResources GetAssignedResources();
+        ClientState GetState();
     }
 }

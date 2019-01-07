@@ -29,9 +29,9 @@ namespace Rebalanser.Core
         public event EventHandler<OnAssignmentArgs> OnAssignment;
 
         /// <summary>
-        /// Called when a non recoverable error occurs
+        /// Called when a non recoverable error occurs and the client is no longer participating in the resource group.
         /// </summary>
-        public event EventHandler<OnErrorArgs> OnError;
+        public event EventHandler<OnAbortedArgs> OnAborted;
 
         /// <summary>
         /// Starts the node
@@ -43,32 +43,56 @@ namespace Rebalanser.Core
             this.cts = new CancellationTokenSource();
             var onChangeActions = new OnChangeActions();
             onChangeActions.AddOnStartAction(StartActivity);
-            onChangeActions.AddOnStopAction(CancelActivity);
-            onChangeActions.AddOnErrorAction(RaiseError);
+            onChangeActions.AddOnStopAction(StopActivity);
+            onChangeActions.AddOnAbortAction(Abort);
             await this.rebalanserProvider.StartAsync(resourceGroup, onChangeActions, this.cts.Token, clientOptions);
+        }
+
+        /// <summary>
+        /// Blocks until the cancellation token is cancelled or the client stops or aborts.
+        /// </summary>
+        /// <param name="token">A CancellationToken that once cancelled will cause the client to stop participating in the resource group and terminate.</param>
+        /// <param name="maxStopTime">If the cancellation token is cancelled, the maximum time to allow the client to safely shutdown.</param>
+        /// <returns></returns>
+        public async Task BlockAsync(CancellationToken token, TimeSpan maxStopTime)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                var clientState = GetCurrentState();
+                switch (clientState)
+                {
+                    case ClientState.PendingAssignment:
+                    case ClientState.Assigned:
+                        await Task.Delay(100);
+                        break;
+                    default:
+                        return;
+                }
+            }
+            
+            await StopAsync(maxStopTime);
         }
         
         /// <summary>
-        /// Returns the list of assigned resources. This is a blocking call that blocks until
-        /// resources have been assigned. Note that if there are more nodes participating in 
-        /// the resource group than there are resources, then the node may be assigned zero resources. Once
-        /// rebalancing is complete, this method will return with an empty collection of resources. 
+        /// Returns the current state of the client and any assigned resources. If the client
+        /// is pending assignment or not in an active state then the resources collection will be empty.
         /// </summary>
-        /// <returns>A list of resources assigned to the node</returns>
-        public IList<string> GetAssignedResources()
+        /// <returns>The assigned resources and state of the client</returns>
+        public AssignedResources GetAssignedResources()
         {
             return this.rebalanserProvider.GetAssignedResources();
         }
 
         /// <summary>
-        /// See GetAssignedResources(). To prevent unbounded blocking, this method receives a 
-        /// CancellationToken which can be used to unblock the method
+        /// Get the current state of the client
         /// </summary>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        public IList<string> GetAssignedResources(CancellationToken token)
+        /// <returns>The state of the client</returns>
+        public ClientState GetCurrentState()
         {
-            return this.rebalanserProvider.GetAssignedResources(token);
+            if (this.rebalanserProvider == null)
+                return ClientState.NoProvider;
+            
+            return this.rebalanserProvider.GetState();
         }
         
         /// <summary>
@@ -140,24 +164,24 @@ namespace Rebalanser.Core
             }
         }
 
-        private void CancelActivity()
+        private void StopActivity()
         {
-            RaiseOnCancelAssignment(EventArgs.Empty);
+            RaiseOnUnassignment(EventArgs.Empty);
         }
 
-        protected virtual void RaiseOnCancelAssignment(EventArgs e)
+        protected virtual void RaiseOnUnassignment(EventArgs e)
         {
             OnUnassignment?.Invoke(this, e);
         }
 
-        private void RaiseError(string message, bool autoRecoveryEnabled, Exception ex)
+        private void Abort(string message, Exception ex)
         {
-            RaiseOnError(new OnErrorArgs(message, autoRecoveryEnabled, ex));
+            RaiseOnAbort(new OnAbortedArgs(message, ex));
         }
 
-        protected virtual void RaiseOnError(OnErrorArgs e)
+        protected virtual void RaiseOnAbort(OnAbortedArgs e)
         {
-            OnError?.Invoke(this, e);
+            OnAborted?.Invoke(this, e);
         }
 
         private void StartActivity(IList<string> resources)

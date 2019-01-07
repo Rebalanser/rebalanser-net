@@ -3,18 +3,22 @@ using System.Collections.Generic;
 
 namespace Rebalanser.Core
 {
-    public class OnChangeActions
+    /// <summary>
+    /// A wrapper class for all start, stop and abort actions.
+    /// This is only of note for provider library implementers.
+    /// </summary>
+    public sealed class OnChangeActions
     {
         public OnChangeActions()
         {
             OnStartActions = new List<Action<IList<string>>>();
             OnStopActions = new List<Action>();
-            OnErrorActions = new List<Action<string, bool, Exception>>();
+            OnAbortActions = new List<Action<string, Exception>>();
         }
 
-        public List<Action<IList<string>>> OnStartActions { get; set; }
-        public List<Action> OnStopActions { get; set; }
-        public List<Action<string, bool, Exception>> OnErrorActions { get; set; }
+        public IList<Action<IList<string>>> OnStartActions { get; set; }
+        public IList<Action> OnStopActions { get; set; }
+        public IList<Action<string, Exception>> OnAbortActions { get; set; }
 
         public void AddOnStartAction(Action<IList<string>> action)
         {
@@ -26,9 +30,9 @@ namespace Rebalanser.Core
             OnStopActions.Add(action);
         }
 
-        public void AddOnErrorAction(Action<string, bool, Exception> action)
+        public void AddOnAbortAction(Action<string, Exception> action)
         {
-            OnErrorActions.Add(action);
+            OnAbortActions.Add(action);
         }
     }
 }
